@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import auto, StrEnum
+import random, string
 
 
 @dataclass
@@ -17,9 +18,23 @@ class TestGenerator:
     def __init__(self, config: TestFileConfiguration) -> None:
         self.config = config
 
+    def _generateLocationName(self, stringLength: int):
+        return "".join(random.choices(string.ascii_letters, k=stringLength))
+
+    def _generateManyLocationNames(self, count: int):
+        return [
+            self._generateLocationName(random.randrange(1, 100)) for _ in range(count)
+        ]
+
     def generateKeys(self):
-        print("generating")
-        pass
+        self.keys.clear()
+        while len(self.keys) < self.config.unique_locaions:
+            self.keys.update(
+                self._generateManyLocationNames(
+                    self.config.unique_locaions - len(self.keys)
+                )
+            )
+        assert len(self.keys) == self.config.unique_locaions
 
     def generateRow(self):
         pass
