@@ -7,17 +7,15 @@ I am also looking to use this as an introductory project to start learning the f
 ## Initial plans and project milestones
 
 1. Tooling to help automate interation and validation
-
     - [ ] Generate test file
     - [ ] Timing
     - [ ] Profiling
     - [ ] Validation
     - [ ] Logging performance across commits
-
 2. Initial naive python implementation
 3. Iterate, Profile, and Validate. `Below is a list of what I expect will help decreate the total runtime of the script`
-
     - [ ] Converting to Mojo datastructures
+    - [ ] generators
     - [ ] Interactions with the file
     - [ ] Data typing and ownership
     - [ ] Concurrency
@@ -27,3 +25,10 @@ I am also looking to use this as an introductory project to start learning the f
 ## Performance/Implementation milestones
 
 > [example link to commit](https://google.com) `00.0 sec` Relevant goal reached or implementation made
+
+## Project setup instructions
+
+1. `curl https://pyenv.run | bash`
+2. Follow instructions supplied in STDOUT to add pyenv to $PATH
+3. Follow [this link](https://github.com/pyenv/pyenv/wiki#suggested-build-environment) for instructions to install all build requirements for your machine
+4. `pyenv install 3.12.2`
