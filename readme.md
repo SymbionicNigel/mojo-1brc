@@ -13,7 +13,7 @@ I am also looking to use this as an introductory project to start learning the f
     - [ ] Validation
     - [ ] Logging performance across commits
 2. Initial naive python implementation
-3. Iterate, Profile, and Validate. `Below is a list of what I expect will help decreate the total runtime of the script`
+3. Iterate, Profile, and Validate. `Below is a list of what I expect will help decrease the total runtime of the script`
     - [ ] Converting to Mojo datastructures
     - [ ] generators
     - [ ] Interactions with the file
