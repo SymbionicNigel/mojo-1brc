@@ -1,8 +1,9 @@
-import math, random, string, os, time
+import math, random, string, os, time, sys
 from dataclasses import dataclass
 from enum import auto, StrEnum
 from multiprocessing import Pool
 from typing import Iterator
+from argparse import ArgumentParser
 
 
 class ConfigNames(StrEnum):
@@ -50,17 +51,15 @@ class TestFileGen:
         self.iterations = iter(
             range(math.ceil(self.config.total_rows / self.pageSize) - 1)
         )
-
         with Pool() as p:
             self.rowsProcessed = sum(p.map(self.runIteration, self.iterations))
-
         self.rowsProcessed += self.runIteration(
             math.ceil(self.config.total_rows / self.pageSize), True
         )
         assert self.rowsProcessed == self.config.total_rows
         t1 = time.time()
         print(
-            f"{self.rowsProcessed} generated in {t1 - t0} seconds pagesize {self.pageSize}"
+            f"{self.rowsProcessed:12} rows generated over {(t1 - t0):8.4f} seconds with a pagesize of {self.pageSize}"
         )
 
     def runIteration(self, _: int, lastRun: bool = False):
@@ -126,9 +125,19 @@ class TestFileGen:
             )
 
 
-def main():
-    [TestFileGen(config=config) for config in CONFIGS.values()]
-
-
 if __name__ == "__main__":
-    main()
+    argParser = ArgumentParser(prog="Billion Row Challenge File Generator")
+    argParser.add_argument("config")
+    parsedConfigName = "FULL"
+    try:
+        parsedArgs = argParser.parse_args(sys.argv[1:])
+        parsedConfigName = str(vars(parsedArgs)["config"]).upper()
+    except:
+        pass
+    config = (
+        ConfigNames[parsedConfigName]
+        if parsedConfigName in ConfigNames.__members__
+        else ConfigNames.FULL
+    )
+    print(f"Generating file with config: {CONFIGS[config]}")
+    TestFileGen(config=CONFIGS[config])

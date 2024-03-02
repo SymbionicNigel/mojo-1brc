@@ -7,7 +7,7 @@ I am also looking to use this as an introductory project to start learning the f
 ## Initial plans and project milestones
 
 1. Tooling to help automate interation and validation
-    - [ ] Generate test file
+    - [X] Generate test file
     - [ ] Timing
     - [ ] Profiling
     - [ ] Validation
