@@ -36,7 +36,6 @@ CONFIGS: dict[ConfigNames, TestFileConfig] = {
 class TestFileGen:
     config: TestFileConfig
     keys: list[str] = []
-    rows: list[str] = []
     pageSize: int = 16_000
     directory = "./.test_resources"
     filenamePrefix = "test_data"
@@ -127,17 +126,7 @@ class TestFileGen:
 
 if __name__ == "__main__":
     argParser = ArgumentParser(prog="Billion Row Challenge File Generator")
-    argParser.add_argument("config")
-    parsedConfigName = "FULL"
-    try:
-        parsedArgs = argParser.parse_args(sys.argv[1:])
-        parsedConfigName = str(vars(parsedArgs)["config"]).upper()
-    except:
-        pass
-    config = (
-        ConfigNames[parsedConfigName]
-        if parsedConfigName in ConfigNames.__members__
-        else ConfigNames.FULL
-    )
-    print(f"Generating file with config: {CONFIGS[config]}")
-    TestFileGen(config=CONFIGS[config])
+    argParser.add_argument("config", type=ConfigNames, choices=ConfigNames.__members__.values())
+    parsedArgs = argParser.parse_args(sys.argv[1:2] if len(sys.argv) > 1 else [ConfigNames.FULL])
+    print(f"Generating file with config: {CONFIGS[vars(parsedArgs)["config"]]}")
+    TestFileGen(config=CONFIGS[vars(parsedArgs)["config"]])
