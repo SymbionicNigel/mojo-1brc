@@ -9,7 +9,11 @@ I am also looking to use this as an introductory project to start learning the f
 1. Tooling to help automate interation and validation
     - [X] Generate test file
     - [ ] Timing
+      - [X] Python
+      - [ ] Mojo
     - [ ] Profiling
+      - [X] Python
+      - [ ] Mojo
     - [ ] Validation
       - [ ] Python
       - [ ] Mojo
