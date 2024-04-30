@@ -2,7 +2,7 @@
 
 After watching a [youtube video reacting](https://youtu.be/cYng524S-MA?si=tJ1I7QKifOiz-Kt8) to another developer's experience re-creating [Gunnar Morling's Java coding challenge](https://www.morling.dev/blog/1brc-results-are-in/) in Golang, where you process one billion rows of simple formated data and output the names of the weather station along with its min, max, and average temperatures in alphabetical order to `STDOUT`. The data will be read from a file and on each row the data is formatted as follows `<Name of Observation point>;<[-99.9, ..., 99.9]>` where there are no more than 10,000 unique locations.
 
-I am also looking to use this as an introductory project to start learning the finer points of Mojo after my few years writing python professionally. Some of the topics of interest are SIMD, concurrency, and Mojo's data ownership model among others.
+I am also looking to use this as an introductory project to start learning the finer points of Mojo after my few years writing python professionally. Some of the topics of interest are SIMD, concurrency, Mojo's data ownership model, and how mojo will interop with CPython.
 
 ## Initial plans and project milestones
 
@@ -11,6 +11,8 @@ I am also looking to use this as an introductory project to start learning the f
     - [ ] Timing
     - [ ] Profiling
     - [ ] Validation
+      - [ ] Python
+      - [ ] Mojo
     - [ ] Logging performance across commits
 2. Initial naive python implementation
 3. Iterate, Profile, and Validate. `Below is a list of what I expect will help decrease the total runtime of the script`
