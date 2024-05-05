@@ -42,6 +42,7 @@ def timingTool(
                         if statsFilePath:
                             with open(statsFilePath, "w") as stream:
                                 printFinalStats(stream=stream)
+                                printFinalStats(stream=None)
                         else:
                             printFinalStats(None)
 
