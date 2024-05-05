@@ -1,9 +1,7 @@
 from argparse import ArgumentParser
 from cProfile import Profile
-from fileinput import filename
 import os, pstats, pathlib
 from pstats import SortKey
-from sre_constants import ANY
 import time
 from typing import IO, Any, Callable
 from functools import wraps
