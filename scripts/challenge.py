@@ -6,6 +6,8 @@ import time
 from typing import IO, Any, Callable
 from functools import wraps
 
+from scripts.tables import TableUpdater
+
 
 def timingTool(
     profile: bool = False,
@@ -28,6 +30,13 @@ def timingTool(
                     func()
                     t1 = time.time()
                     print(f"{func.__name__} ran in {(t1-t0):10.4f} seconds")
+
+                    if storeInRecords:
+                        TableUpdater(
+                            {
+                                "runTime": t1 - t0,
+                            }
+                        )
 
                     if profile:
                         profiler.disable()
