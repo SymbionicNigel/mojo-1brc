@@ -31,12 +31,12 @@ def timingTool(
                     t1 = time.time()
                     print(f"{func.__name__} ran in {(t1-t0):10.4f} seconds")
 
-                    if storeInRecords:
-                        TableUpdater(
-                            {
-                                "runTime": t1 - t0,
-                            }
-                        )
+                    # if storeInRecords:
+                    #     TableUpdater(
+                    #         {
+                    #             "runTime": t1 - t0,
+                    #         }
+                    #     )
 
                     if profile:
                         profiler.disable()

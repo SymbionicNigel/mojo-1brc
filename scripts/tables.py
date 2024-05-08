@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+import pathlib
 import subprocess
 from typing import Tuple
 from pytablewriter import MarkdownTableWriter
+from pytablereader import MarkdownTableFileLoader
 
 
 @dataclass(kw_only=True)
@@ -22,7 +24,7 @@ class TableUpdater[T: AttemptData, I: str | float | int]:
         self._upsert_current_data()
         self._save_data()
 
-    def _is_workspace_clean(self, error_on_dirty: bool = True) -> bool:
+    def _is_workspace_clean(self, error_on_dirty: bool = False) -> bool:
         unstaged = subprocess.run(["git", "diff", "--exit-code", "--no-patch"])
         staged = subprocess.run(
             ["git", "diff", "--cached", "--exit-code", "--no-patch"]
@@ -34,8 +36,10 @@ class TableUpdater[T: AttemptData, I: str | float | int]:
 
     def _read_attempt_data(self):
         self.attempt_data = []
-        # TODO: Read current data from .json file
-        pass
+        pathz = pathlib.Path.cwd().joinpath("scripts/test.md")
+        x = MarkdownTableFileLoader(pathz)
+        for z in x.load():
+            print(z)
 
     @classmethod
     def get_current_commit_data(cls) -> Tuple[str, str]:
