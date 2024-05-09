@@ -1,9 +1,16 @@
 from dataclasses import dataclass
+import json
 import pathlib
 import subprocess
-from typing import Tuple
+from typing import List, Tuple
+
 from pytablewriter import MarkdownTableWriter
-from pytablereader import MarkdownTableFileLoader
+
+FILEPATHS = {
+    "README_TEMPLATE": pathlib.Path.cwd().joinpath("data_files/template_readme.md"),
+    "README": pathlib.Path.cwd().joinpath("readme.md"),
+    "ATTEMPTS_JSON": pathlib.Path.cwd().joinpath("data_files/attempt_data.json"),
+}
 
 
 @dataclass(kw_only=True)
@@ -11,20 +18,25 @@ class AttemptData:
     short_commit_id: str
     commit_id: str
     run_time: float
+    note: str = ""
+    row_count: int
+    # TODO: add timestamp
+    # date: datetime = datetime.fromtimestamp(0, UTC)
 
 
-class TableUpdater[T: AttemptData, I: str | float | int]:
-    attempt_data: list[T] = []
-    current_attempt: T
+class TableUpdater:
+    attempt_data: List[AttemptData]
+    current_attempt: AttemptData
 
-    def __init__(self, current_attempt: T) -> None:
+    def __init__(self, current_attempt: AttemptData) -> None:
         self.current_attempt = current_attempt
         self._is_workspace_clean()
         self._read_attempt_data()
         self._upsert_current_data()
         self._save_data()
 
-    def _is_workspace_clean(self, error_on_dirty: bool = False) -> bool:
+    @staticmethod
+    def _is_workspace_clean(error_on_dirty: bool = False) -> bool:
         unstaged = subprocess.run(["git", "diff", "--exit-code", "--no-patch"])
         staged = subprocess.run(
             ["git", "diff", "--cached", "--exit-code", "--no-patch"]
@@ -35,17 +47,21 @@ class TableUpdater[T: AttemptData, I: str | float | int]:
         return bool(staged.returncode + unstaged.returncode)
 
     def _read_attempt_data(self):
-        self.attempt_data = []
-        pathz = pathlib.Path.cwd().joinpath("scripts/test.md")
-        x = MarkdownTableFileLoader(pathz)
-        for z in x.load():
-            print(z)
+        with open(file=FILEPATHS["ATTEMPTS_JSON"], mode="r") as stream:
+            attempt_data = json.load(stream)
+            assert "attempts" in attempt_data
+            self.attempt_data = [AttemptData(**x) for x in attempt_data["attempts"]]
 
-    @classmethod
-    def get_current_commit_data(cls) -> Tuple[str, str]:
-        full = subprocess.run(["git", "rev-parse", "HEAD"])
-        partial = subprocess.run(["git", "rev-parse", "--short", "HEAD"])
-        return str(full.stdout), str(partial.stdout)
+    @staticmethod
+    def get_current_commit_data() -> Tuple[str, str]:
+        return (
+            subprocess.check_output(["git", "rev-parse", "HEAD"])
+            .decode("ascii")
+            .strip(),
+            subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+            .decode("ascii")
+            .strip(),
+        )
 
     def _upsert_current_data(self):
         def find_attempt_by_commit(item: AttemptData):
@@ -53,6 +69,14 @@ class TableUpdater[T: AttemptData, I: str | float | int]:
                 item.commit_id == self.current_attempt.commit_id
             )
 
+        if not TableUpdater._is_workspace_clean():
+            assert (
+                self.current_attempt.note
+            ), "A note is required when the workspace has uncommitted changes"
+            self.current_attempt.commit_id += "*"
+            self.current_attempt.short_commit_id += "*"
+            # TODO: insert after last instance of the commit
+            pass
         try:
             current_data = next(filter(find_attempt_by_commit, iter(self.attempt_data)))
             current_index = self.attempt_data.index(current_data)
@@ -62,9 +86,25 @@ class TableUpdater[T: AttemptData, I: str | float | int]:
             pass
 
     def _save_data(self):
-        # TODO: Create table and save to file
-        # TODO: Save to .json file
-        MarkdownTableWriter()
+        readme_template = ""
+        with open(file=FILEPATHS["README_TEMPLATE"], mode="r") as stream:
+            readme_template = stream.read()
+        assert readme_template, "Readme template expected to be non-empty"
+
+        # TODO: Create markdown table
+        markdown_table_string = MarkdownTableWriter(kwargs={})
+
+        with open(file=FILEPATHS["README"], mode="w") as stream:
+            stream.write(readme_template.format(attempts_table=markdown_table_string))
+
+        with open(file=FILEPATHS["ATTEMPTS_JSON"], mode="w") as stream:
+            json.dump(
+                {
+                    "attempts": [x.__dict__ for x in self.attempt_data],
+                },
+                fp=stream,
+                indent=2,
+            )
 
 
 if __name__ == "__main__":
@@ -73,6 +113,8 @@ if __name__ == "__main__":
         AttemptData(
             commit_id=current_commit[0],
             short_commit_id=current_commit[1],
-            run_time=10.1,
+            run_time=10.11,
+            row_count=350,
+            # date=datetime.now(UTC),
         )
     )
