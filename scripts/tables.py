@@ -1,7 +1,9 @@
-from dataclasses import dataclass, fields
+import builtins
+import datetime
 import json
 import pathlib
 import subprocess
+from dataclasses import asdict, dataclass, field, fields
 from typing import List, Tuple
 from pytablewriter import MarkdownTableWriter
 
@@ -17,11 +19,25 @@ class AttemptData:
     # Field order matters
     short_commit_id: str
     row_count: int
+    timestamp: datetime.datetime = field(
+        default=datetime.datetime.fromtimestamp(0, datetime.UTC),
+    )
     run_time: float
     note: str = ""
     commit_id: str
-    # TODO: add timestamp
-    # date: datetime = datetime.fromtimestamp(0, UTC)
+
+    def __post_init__(self):
+        match type(self.timestamp):
+            case datetime.datetime:
+                print("Already a datetime")
+            case builtins.str:
+                self.timestamp = datetime.datetime.fromisoformat(str(self.timestamp))
+                pass
+            case _:
+                self.timestamp = datetime.datetime.now()
+
+        assert self.timestamp
+        assert type(self.timestamp) == datetime.datetime
 
 
 class TableUpdater:
@@ -108,7 +124,17 @@ class TableUpdater:
 
         markdown_table_string = MarkdownTableWriter(
             headers=[field.name for field in fields(AttemptData)],
-            value_matrix=[list(x.__dict__.values()) for x in self.attempt_data],
+            value_matrix=[
+                list(
+                    (
+                        datetime.datetime.strftime(val, "%x %X")
+                        if type(val) == datetime.datetime
+                        else val
+                    )
+                    for val in attempt.__dict__.values()
+                )
+                for attempt in self.attempt_data
+            ],
         )
 
         with open(file=FILEPATHS["README"], mode="w") as stream:
@@ -119,8 +145,9 @@ class TableUpdater:
         with open(file=FILEPATHS["ATTEMPTS_JSON"], mode="w") as stream:
             json.dump(
                 {
-                    "attempts": [x.__dict__ for x in self.attempt_data],
+                    "attempts": [asdict(x) for x in self.attempt_data],
                 },
+                default=str,
                 fp=stream,
                 indent=2,
             )
