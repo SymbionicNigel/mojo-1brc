@@ -45,7 +45,7 @@ class AttemptData:
 
 
 class TableUpdater:
-    attempt_data: List[AttemptData]
+    attempt_data: List[AttemptData] = []
     current_attempt: AttemptData
 
     def __init__(self, current_attempt: AttemptData) -> None:

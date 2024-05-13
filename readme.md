@@ -30,6 +30,10 @@ I am also looking to use this as an introductory project to start learning the f
 
 ## Performance/Implementation milestones
 
+|Short Commit Id|Row Count|Timestamp|Average Run Time|Runs|Note|
+|:-------------:|:-------:|:-------:|----------------|:--:|----|
+
+
 > [example link to commit](https://google.com) `00.0 sec` Relevant goal reached or implementation made
 
 ## Project setup instructions
