@@ -17,7 +17,7 @@ I am also looking to use this as an introductory project to start learning the f
     - [ ] Validation
       - [ ] Python
       - [ ] Mojo
-    - [ ] Logging performance across commits
+    - [X] Logging performance across commits
 2. Initial naive python implementation
 3. Iterate, Profile, and Validate. `Below is a list of what I expect will help decrease the total runtime of the script`
     - [ ] Converting to Mojo datastructures

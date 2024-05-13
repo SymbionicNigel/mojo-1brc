@@ -6,6 +6,7 @@ import subprocess
 from dataclasses import asdict, dataclass, field, fields
 from typing import List, Tuple
 from pytablewriter import MarkdownTableWriter
+from pytablewriter.style import Style
 
 FILEPATHS = {
     "README_TEMPLATE": pathlib.Path.cwd().joinpath("data_files/template_readme.md"),
@@ -22,7 +23,8 @@ class AttemptData:
     timestamp: datetime.datetime = field(
         default=datetime.datetime.fromtimestamp(0, datetime.UTC),
     )
-    run_time: float
+    average_run_time: float
+    runs: int = 1
     note: str = ""
     commit_id: str
 
@@ -38,6 +40,8 @@ class AttemptData:
 
         assert self.timestamp
         assert type(self.timestamp) == datetime.datetime
+
+    # TODO: just make a function which produces the correctly formatted values for this obj. Formatting date correctly, adding a link to the commit id string, math to calculate time per 1mil or count processed in 1sec or some other standard
 
 
 class TableUpdater:
@@ -122,8 +126,21 @@ class TableUpdater:
             readme_template = stream.read()
         assert readme_template, "Readme template expected to be non-empty"
 
-        markdown_table_string = MarkdownTableWriter(
-            headers=[field.name for field in fields(AttemptData)],
+        markdown_styles: list[Style] = [
+            Style(align="center"),  # Short Commit ID
+            Style(thousand_separator=",", align="center"),  # Row Count
+            Style(align="center", vertical_align="middle"),  # Timestamp
+            Style(thousand_separator=","),  # Run Time
+            Style(align="center"),  # Iterations
+            Style(),  # Note
+        ]
+
+        markdown_table = MarkdownTableWriter(
+            headers=[
+                field.name.title().replace("_", " ")
+                for field in fields(AttemptData)
+                if field.name != "commit_id"
+            ],
             value_matrix=[
                 list(
                     (
@@ -135,12 +152,11 @@ class TableUpdater:
                 )
                 for attempt in self.attempt_data
             ],
+            column_styles=markdown_styles,
         )
 
         with open(file=FILEPATHS["README"], mode="w") as stream:
-            stream.write(
-                readme_template.format(attempts_table=str(markdown_table_string))
-            )
+            stream.write(readme_template.format(attempts_table=str(markdown_table)))
 
         with open(file=FILEPATHS["ATTEMPTS_JSON"], mode="w") as stream:
             json.dump(
@@ -159,7 +175,7 @@ if __name__ == "__main__":
         AttemptData(
             commit_id=f"test_{current_commit[0]}",
             short_commit_id=f"test_{current_commit[1]}",
-            run_time=123456.78,
+            average_run_time=123456.78,
             row_count=9004,
             note="Test note",
         )
