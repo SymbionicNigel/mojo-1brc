@@ -8,7 +8,9 @@ from argparse import ArgumentParser
 
 class ConfigNames(StrEnum):
     KILO = auto()
+    DECI = auto()
     PERCENT = auto()
+    TENTH = auto()
     FULL = auto()
 
 
@@ -24,8 +26,12 @@ TEMP_RANGE = (-99.9, 99.9)
 
 CONFIGS: dict[ConfigNames, TestFileConfig] = {
     ConfigNames.KILO: TestFileConfig(1_000, 50, TEMP_RANGE, ConfigNames.KILO),
+    ConfigNames.DECI: TestFileConfig(10_000, 100, TEMP_RANGE, ConfigNames.DECI),
     ConfigNames.PERCENT: TestFileConfig(
         10_000_000, 10_00, TEMP_RANGE, ConfigNames.PERCENT
+    ),
+    ConfigNames.TENTH: TestFileConfig(
+        100_000_000, 5_000, TEMP_RANGE, ConfigNames.TENTH
     ),
     ConfigNames.FULL: TestFileConfig(
         1_000_000_000, 10_000, TEMP_RANGE, ConfigNames.FULL
