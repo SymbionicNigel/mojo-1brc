@@ -1,77 +1,14 @@
 from argparse import ArgumentParser
-from cProfile import Profile
-from multiprocessing import Manager, Pool
-import os, pstats, pathlib
-from pstats import SortKey
-import time
-from typing import IO, Any, Callable
-from functools import wraps
+from multiprocessing import Pool
+import statistics
+import traceback
+from typing import Any, Generator, Self
+from functools import reduce
+from scripts.tables import AttemptData, TableUpdater
+from timing import timingTool
 
-FILEPATH = "./.test_resources/test_data_kilo.txt"
-
-
-def timingTool(
-    profile: bool = False,
-    storeInRecords: bool = False,
-    saveStats: bool = False,
-):
-    def timingTool(
-        func: Callable[[], Any],
-    ):
-        @wraps(func)
-        def wrapper():
-
-            def profileFunc(statsFilePath: str | None):
-                with Profile() as profiler:
-
-                    if not profile:
-                        profiler.disable()
-
-                    t0 = time.time()
-                    func()
-                    t1 = time.time()
-                    print(f"{func.__name__} ran in {(t1-t0):10.4f} seconds")
-
-                    if profile:
-                        profiler.disable()
-
-                        def printFinalStats(stream: IO[Any] | None):
-                            printStats = pstats.Stats(
-                                profiler, stream=stream
-                            ).sort_stats(SortKey.CUMULATIVE)
-                            printStats.print_stats()
-
-                        assert (not statsFilePath) or os.path.exists(statsFilePath)
-                        if statsFilePath:
-                            with open(statsFilePath, "w") as stream:
-                                printFinalStats(stream=stream)
-                                printFinalStats(stream=None)
-                        else:
-                            printFinalStats(None)
-
-                        if storeInRecords:
-                            recordsPath = pathlib.Path.cwd().joinpath("./records.csv")
-                            with open(recordsPath, mode="t+a") as recordFile:
-                                recordFile.write(f"{time.time()},{(t1-t0):10.4f}\n")
-
-                        # TODO: give the option to flush the profile results to a file in a structured format to be displayed in the readme. Consider using https://pypi.org/project/pytablewriter/
-
-            saveStatsFilepath = None
-            if saveStats:
-                statsDirectory = pathlib.Path.cwd().joinpath("./profilerData/")
-                if not os.path.exists(statsDirectory):
-                    os.mkdir(statsDirectory)
-                assert os.path.exists(statsDirectory)
-                saveStatsFilepath = f"{statsDirectory}/{int(time.time())}.txt"
-                with open(saveStatsFilepath, "w") as _stats:
-                    pass
-            profileFunc(saveStatsFilepath)
-
-            return
-
-        return wrapper
-
-    return timingTool
+FILEPATH = "./.test_resources/test_data_full.txt"
+RUNS = 3
 
 
 class LocationData:
@@ -82,116 +19,143 @@ class LocationData:
     sum_temp: float
     loc_str: str
 
+    def __init__(self, loc_str: str, temp: float) -> None:
+        self.loc_str = loc_str
+        self.max_temp = temp
+        self.min_temp = temp
+        self.sum_temp = temp
+        self.count = 1
+
+    def merge(self, temperature: float):
+        if self.max_temp < temperature:
+            self.max_temp = temperature
+        if self.min_temp > temperature:
+            self.min_temp = temperature
+        self.count += 1
+        self.sum_temp += temperature
+
+    def mergeComplex(self, mergedData: Self):
+        if self.max_temp < mergedData.max_temp:
+            self.max_temp = mergedData.max_temp
+        if self.min_temp > mergedData.min_temp:
+            self.min_temp = mergedData.min_temp
+        self.count += mergedData.count
+        self.sum_temp += mergedData.sum_temp
+
+
+fileDone = False
+
 
 class Challenge:
-    manager = Manager()
 
     def __init__(self) -> None:
-        self.data = self.manager.dict()
+        self.data: dict[str, LocationData] = {}
 
     def readFile(self):
-        def callback(objs: Any):
-            print("callback", len(objs))
-            for idx, obj in enumerate(objs):
-                try:
-                    self.mergeData(obj)
-                except Exception as e:
-                    print(e)
-            print(len(self.data.keys()))
 
-        def error_callback(obj: BaseException):
-            print("error_callback", obj)
+        global fileDone
 
-        def fileIterator():
+        def fileIterator() -> Generator[list[str], Any, None]:
             with open(FILEPATH) as dataFile:
                 while lineGroup := dataFile.readlines(4096):
                     yield lineGroup
 
         fileIter = fileIterator()
-        x = None
-        with Pool() as p:
-            x = p.map_async(
-                self.readFileIter,
-                fileIter,
-                chunksize=10,
-                callback=callback,
-                error_callback=error_callback,
-            )
 
-            x.wait()
+        def filePortionIterator(filePortion: int) -> Generator[list[str], Any, None]:
+            iters = 0
+            while True:
+                if iters == 90_000:
+                    # TODO: Need to look into how this will affect the memory of the program over the runtime of the script did not make it all the way through the full script
+                    break
+                iters += 1
+                try:
+                    yield next(fileIter)
+                except StopIteration:
+                    global fileDone
+                    fileDone = True
+                    break
+            print(f"Portion {filePortion}, final iters {iters}")
+
+        with Pool() as p:
+            i = 1
+            while not fileDone:
+
+                reduce(
+                    self.mergeData,
+                    p.imap(
+                        self.readFileIter,
+                        filePortionIterator(i),
+                        chunksize=12500,
+                    ),
+                    self.data,
+                )
+                i += 1
+        return self
 
     def readFileIter(self, lineGroups: list[str]):
-        workingData = {}
-        print(len(lineGroups))
+        workingData: dict[str, LocationData] = {}
         for line in lineGroups:
             location, temp_str = line.removesuffix("\n").split(";")
             self.upsert_row(location.capitalize(), float(temp_str), workingData)
         return workingData
 
-    def mergeData(self, itemToMerge):
-        print(sum(x["count"] for x in itemToMerge.values()))
+    def mergeData(
+        self,
+        fullData: dict[str, LocationData],
+        itemToMerge: dict[str, LocationData],
+    ):
         for location, partial in itemToMerge.items():
-            if location not in self.data:
-                self.data[location] = partial
+            if location not in fullData:
+                fullData[location] = partial
             else:
-                # print("else")
-                if self.data[location]["max_temp"] < partial["max_temp"]:
-                    self.data[location]["max_temp"] = partial["max_temp"]
-                if self.data[location]["min_temp"] > partial["min_temp"]:
-                    self.data[location]["min_temp"] = partial["min_temp"]
-                # with workingData
-                self.data[location]["count"] += partial["count"]
-                self.data[location]["sum_temp"] += partial["sum_temp"]
+                fullData[location].mergeComplex(partial)
+        return fullData
 
-    def upsert_row(self, location: str, temperature: float, workingData: Any):
+    def upsert_row(
+        self, location: str, temperature: float, workingData: dict[str, LocationData]
+    ):
         if location not in workingData:
-            workingData[location] = {
-                "loc_str": location,
-                "max_temp": temperature,
-                "min_temp": temperature,
-                "sum_temp": temperature,
-                "count": 1,
-            }
+            workingData[location] = LocationData(location, temperature)
         else:
-            tempData = workingData[location]
-            if workingData[location]["max_temp"] < temperature:
-                tempData["max_temp"] = temperature
-            if workingData[location]["min_temp"] > temperature:
-                tempData["min_temp"] = temperature
-            tempData["count"] += 1
-            tempData["sum_temp"] += temperature
-            workingData[location] = tempData
+            workingData[location].merge(temperature)
 
     def sort_and_print(self):
-        for location in sorted(self.data.keys()):
-            self.print_row(
-                location=self.data[location]["loc_str"],
-                min_temp=self.data[location]["min_temp"],
-                max_temp=self.data[location]["max_temp"],
-                average=(
-                    self.data[location]["sum_temp"] / self.data[location]["count"]
-                ),
-                count=self.data[location]["count"],
-            )
-        print(sum(x["count"] for x in self.data.values()))
+        for location in sorted(self.data.values(), key=lambda x: x.loc_str):
+            self.print_row(loc_data=location)
 
-    def print_row(
-        self,
-        location: str,
-        min_temp: float,
-        max_temp: float,
-        average: float,
-        count: int,
-    ):
-        print(f"{location},{min_temp},{max_temp},{average},{count}")
+    def print_row(self, loc_data: LocationData):
+        print(
+            f"{loc_data.loc_str},{loc_data.min_temp},{loc_data.max_temp},{(loc_data.sum_temp / loc_data.count):3.1f}"
+        )
 
 
-@timingTool(profile=False, storeInRecords=False, saveStats=False)
+def storeInRecords(
+    runtimes: list[float],
+):
+    current_commit = TableUpdater.get_current_commit_data()
+    TableUpdater(
+        AttemptData(
+            commit_id=current_commit[0],
+            short_commit_id=current_commit[1],
+            runs=len(runtimes),
+            average_run_time=statistics.mean(runtimes),
+            note=input("Add notes on this run please: "),
+            row_count=0,
+        )
+    )
+
+
+@timingTool(profile=False, storeInRecords=storeInRecords, saveStats=False, runs=RUNS)
 def runChallenge():
-    x = Challenge()
-    x.readFile()
-    x.sort_and_print()
-    return
+    success = False
+    try:
+        Challenge().readFile().sort_and_print()
+        success = True
+    except Exception:
+        traceback.print_exc()
+    finally:
+        return success
 
 
 if __name__ == "__main__":
