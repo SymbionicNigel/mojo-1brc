@@ -1,58 +1,22 @@
 import math, random, string, os, time, sys
-from dataclasses import dataclass
-from enum import auto, StrEnum
 from multiprocessing import Pool
 from typing import Iterator
 from argparse import ArgumentParser
-
-
-class ConfigNames(StrEnum):
-    KILO = auto()
-    DECI = auto()
-    MILL = auto()
-    PERCENT = auto()
-    TENTH = auto()
-    FULL = auto()
-
-
-@dataclass
-class TestFileConfig:
-    total_rows: int
-    unique_locations: int
-    range: tuple[float, float]
-    configName: ConfigNames
-
-
-TEMP_RANGE = (-99.9, 99.9)
-
-CONFIGS: dict[ConfigNames, TestFileConfig] = {
-    ConfigNames.KILO: TestFileConfig(1_000, 50, TEMP_RANGE, ConfigNames.KILO),
-    ConfigNames.DECI: TestFileConfig(10_000, 100, TEMP_RANGE, ConfigNames.DECI),
-    ConfigNames.MILL: TestFileConfig(1_000_000, 500, TEMP_RANGE, ConfigNames.MILL),
-    ConfigNames.PERCENT: TestFileConfig(
-        10_000_000, 10_00, TEMP_RANGE, ConfigNames.PERCENT
-    ),
-    ConfigNames.TENTH: TestFileConfig(
-        100_000_000, 5_000, TEMP_RANGE, ConfigNames.TENTH
-    ),
-    ConfigNames.FULL: TestFileConfig(
-        1_000_000_000, 10_000, TEMP_RANGE, ConfigNames.FULL
-    ),
-}
+from scripts.test_file_configs import CONFIGS, TEST_FILE_DIR, ConfigNames, TestFileConfig, generateFilename
 
 
 class TestFileGen:
     config: TestFileConfig
     keys: list[str] = []
     pageSize: int = 16_000
-    directory = "./.test_resources"
-    filenamePrefix = "test_data"
     rowsProcessed = 0
     iterations: Iterator[int]
+    filename: str
 
     def __init__(self, config: TestFileConfig) -> None:
         t0 = time.time()
         self.config = config
+        self.filename = generateFilename(self.config)
         self.generateKeys()
         self.cleanFiles()
         self.iterations = iter(
@@ -95,9 +59,6 @@ class TestFileGen:
         assert len(workingKeys) == self.config.unique_locations
         self.keys = list(workingKeys)
 
-    def generateFilename(self):
-        return f"{self.directory}/{self.filenamePrefix}_{self.config.configName}.txt"
-
     def generateRow(self, keyList: list[str]):
         randIndex = random.randint(0, self.config.unique_locations)
         return f"{keyList[randIndex - 1]};{round(random.uniform(self.config.range[0], self.config.range[1]), 1)}"
@@ -111,25 +72,21 @@ class TestFileGen:
         return [self.generateRow(self.keys) for _ in range(currentPagesSize)]
 
     def cleanFiles(self):
-        if not os.path.exists(self.directory):
-            os.mkdir(self.directory)
-        assert os.path.exists(self.directory)
-        if os.path.exists(self.generateFilename()):
-            os.remove(self.generateFilename())
-        assert not os.path.exists(self.generateFilename())
-        with open(self.generateFilename(), "w"):
+        if not os.path.exists(TEST_FILE_DIR):
+            os.mkdir(TEST_FILE_DIR)
+        assert os.path.exists(TEST_FILE_DIR)
+        if os.path.exists(self.filename):
+            os.remove(self.filename)
+        assert not os.path.exists(self.filename)
+        with open(self.filename, "w"):
             pass
-        assert os.path.exists(self.generateFilename())
+        assert os.path.exists(self.filename)
 
     def writeToFile(self, linesToWrite: list[str], lastRun: bool):
-        assert os.path.exists(self.directory), f"Directory Not Found: {self.directory}"
-        assert os.path.exists(
-            self.generateFilename()
-        ), f"File Not Found, filename {self.generateFilename()}"
-        with open(self.generateFilename(), "a") as file_obj:
-            file_obj.write(
-                "\n".join(linesToWrite) + ("" if lastRun else "\n"),
-            )
+        assert os.path.exists(TEST_FILE_DIR), f"Directory Not Found: {TEST_FILE_DIR}"
+        assert os.path.exists(self.filename), f"File Not Found, filename {self.filename}"
+        with open(self.filename, "a") as file_obj:
+            file_obj.write("\n".join(linesToWrite) + ("" if lastRun else "\n"))
 
 
 if __name__ == "__main__":
