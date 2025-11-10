@@ -4,11 +4,11 @@ import statistics
 import traceback
 from typing import Any, Generator, Self
 from functools import reduce
-from scripts.tables import AttemptData, TableUpdater
+from test_file_configs import CONFIGS, ConfigNames, TestFileConfig, generateFilename
+from tables import AttemptData, TableUpdater
 from timing import timingTool
 
-FILEPATH = "./.test_resources/test_data_full.txt"
-RUNS = 3
+RUNS = 1
 
 
 class LocationData:
@@ -43,54 +43,32 @@ class LocationData:
         self.sum_temp += mergedData.sum_temp
 
 
-fileDone = False
-
-
 class Challenge:
 
-    def __init__(self) -> None:
+    def __init__(self, config: TestFileConfig) -> None:
         self.data: dict[str, LocationData] = {}
+        self.config = config
+        self.filename = generateFilename(config)
 
     def readFile(self):
 
-        global fileDone
-
         def fileIterator() -> Generator[list[str], Any, None]:
-            with open(FILEPATH) as dataFile:
+            with open(self.filename) as dataFile:
                 while lineGroup := dataFile.readlines(4096):
                     yield lineGroup
 
         fileIter = fileIterator()
 
-        def filePortionIterator(filePortion: int) -> Generator[list[str], Any, None]:
-            iters = 0
-            while True:
-                if iters == 90_000:
-                    # TODO: Need to look into how this will affect the memory of the program over the runtime of the script did not make it all the way through the full script
-                    break
-                iters += 1
-                try:
-                    yield next(fileIter)
-                except StopIteration:
-                    global fileDone
-                    fileDone = True
-                    break
-            print(f"Portion {filePortion}, final iters {iters}")
-
         with Pool() as p:
-            i = 1
-            while not fileDone:
-
-                reduce(
-                    self.mergeData,
-                    p.imap(
-                        self.readFileIter,
-                        filePortionIterator(i),
-                        chunksize=12500,
-                    ),
-                    self.data,
-                )
-                i += 1
+            reduce(
+                self.mergeData,
+                p.imap(
+                    self.readFileIter,
+                    fileIter,
+                    chunksize=12500,
+                ),
+                self.data,
+            )
         return self
 
     def readFileIter(self, lineGroups: list[str]):
@@ -125,9 +103,7 @@ class Challenge:
             self.print_row(loc_data=location)
 
     def print_row(self, loc_data: LocationData):
-        print(
-            f"{loc_data.loc_str},{loc_data.min_temp},{loc_data.max_temp},{(loc_data.sum_temp / loc_data.count):3.1f}"
-        )
+        print(f"{loc_data.loc_str},{loc_data.min_temp},{loc_data.max_temp},{(loc_data.sum_temp / loc_data.count):3.1f},{loc_data.count}")
 
 
 def storeInRecords(
@@ -141,7 +117,7 @@ def storeInRecords(
             runs=len(runtimes),
             average_run_time=statistics.mean(runtimes),
             note=input("Add notes on this run please: "),
-            row_count=0,
+            row_count=CONFIGS[ConfigNames.MILL].total_rows,
         )
     )
 
@@ -150,7 +126,7 @@ def storeInRecords(
 def runChallenge():
     success = False
     try:
-        Challenge().readFile().sort_and_print()
+        Challenge(CONFIGS[ConfigNames.MILL]).readFile().sort_and_print()
         success = True
     except Exception:
         traceback.print_exc()
